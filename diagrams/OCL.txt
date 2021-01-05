@@ -1,0 +1,52 @@
+/* ENTITIES */
+
+context Author
+invariant firstNameIsNotEmpty: firstName.length() > 0
+invariant firstNameFormatIsCorrect: firstName.matches([a-zA-Z]*)
+invariant lastNameIsNotEmpty: lastName.length() > 0
+invariant lastNameFormatIsCorrect: lastName.matches([a-zA-Z]*)
+invariant emailIsNotEmpty: email.length() > 0
+invariant emailFormatIsCorrect: email.matches([a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)
+invariant manyToManyHousesRelationship: publishingHouses->forAll(authors->includes(self))
+invariant manyToManyBooksRelationship: books->forAll(authors->includes(self))
+
+// podobně pro ostatní entity
+
+/* SERVICES */
+
+context AuthorServiceImpl::createNewAuthor(author)
+post convertsRepositoryResultToDto:
+		return.oclIsTypeOf(AuthorDto)
+
+context AuthorServiceImpl::getAllAuthors()
+post returnsAllAuthorsFromDB:
+		return->collect(id)->includesAll(AuthorRepository.findAll()->collect(id))
+		and
+		AuthorRepository.findAll()->collect(id)->includesAll(return->collect(id))
+
+context AuthorServiceImpl::getAuthorById(id)
+		if (AuthorRepository.findById(id) == null) then
+			return = null
+		else
+			return.oclIsTypeOf(AuthorDto)
+		endif
+
+context AuthorServiceImpl::makeAgreementWithPublishingHouse(authorId, houseId)
+post returnsCorrectResult:
+		if (AuthorRepository.findById(authorId) == null or PublishingHouseRepository.findById(houseId) == null) then
+			return = null
+		else
+			return.oclIsTypeOf(AuthorDto)
+		endif
+
+context BookServiceImpl::createNewBook(bookDto)
+post saveOnlyCorrectBook:
+		if (BookRepository.findAll()->collect(isbn)->includes(bookDto.isbn)
+			return = null
+		else if (not (bookDto.authors->forAll(publishingHouses->includes(bookDto.publishingHouse))))
+			return = null
+		else
+			return.oclIsTypeOf(BookDto)
+		endif
+
+// podobně pro ostatní služby
